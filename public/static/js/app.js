@@ -58,6 +58,7 @@
         stopCameraBtn: document.getElementById('stop-camera-btn'),
         cameraVideo: document.getElementById('camera-video'),
         cameraCanvas: document.getElementById('camera-canvas'),
+        handRoiBox: document.getElementById('hand-roi-box'),
         cameraOverlay: document.getElementById('camera-overlay'),
         cameraError: document.getElementById('camera-error'),
         cameraErrorText: document.getElementById('camera-error-text'),
@@ -380,13 +381,14 @@
             }
 
             el.cameraOverlay.classList.add('d-none');
+            if (el.handRoiBox) el.handRoiBox.classList.remove('d-none');
             el.startCameraBtn.classList.add('d-none');
             el.stopCameraBtn.classList.remove('d-none');
             el.cameraStatusDot.style.display = 'inline';
             el.cameraStatusText.textContent = 'Camera active';
 
-            // Start capturing frames every 1.5 seconds
-            state.captureInterval = setInterval(captureAndPredict, 1500);
+            // Start capturing frames every 1.2 seconds
+            state.captureInterval = setInterval(captureAndPredict, 1200);
 
         } catch (err) {
             console.error('Camera error:', err);
@@ -422,6 +424,7 @@
         state.stableCount = 0;
 
         el.cameraOverlay.classList.remove('d-none');
+        if (el.handRoiBox) el.handRoiBox.classList.add('d-none');
         el.startCameraBtn.classList.remove('d-none');
         el.stopCameraBtn.classList.add('d-none');
         el.cameraStatusDot.style.display = 'none';
@@ -440,13 +443,21 @@
 
         if (video.readyState < 2) return; // Not ready
 
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        const vw = video.videoWidth || 640;
+        const vh = video.videoHeight || 480;
+
+        // Crop the central square (ROI) corresponding to the on-screen target box
+        const cropSize = Math.round(Math.min(vw, vh) * 0.70);
+        const startX = Math.round((vw - cropSize) / 2);
+        const startY = Math.round((vh - cropSize) / 2);
+
+        canvas.width = 200;
+        canvas.height = 200;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0);
+        ctx.drawImage(video, startX, startY, cropSize, cropSize, 0, 0, 200, 200);
 
         // Convert to base64
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
 
         state.pendingRequest = true;
 
@@ -470,6 +481,18 @@
     }
 
     function displayCameraResult(data) {
+        // If nothing is detected or very low confidence, guide the user to hold hand in box
+        if (data.label === 'nothing' || data.confidence < 0.40) {
+            el.cameraPredictedLetter.textContent = '—';
+            el.cameraPredictedMeaning.textContent = 'Place hand inside the box to detect sign';
+            el.cameraConfidenceValue.textContent = (data.confidence * 100).toFixed(1) + '%';
+            el.cameraConfidenceBar.style.width = '0%';
+            el.cameraWarning.classList.add('d-none');
+            state.lastCameraLabel = null;
+            state.stableCount = 0;
+            return;
+        }
+
         el.cameraPredictedLetter.textContent = data.label;
         el.cameraPredictedLetter.classList.add('pulse');
         setTimeout(() => el.cameraPredictedLetter.classList.remove('pulse'), 500);

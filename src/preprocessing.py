@@ -43,6 +43,14 @@ def preprocess_image(image_input, target_size=(IMG_HEIGHT, IMG_WIDTH)):
     if pil_img.mode != 'RGB':
         pil_img = pil_img.convert('RGB')
     
+    # Center-square crop to preserve hand geometry and aspect ratio without squashing
+    w, h = pil_img.size
+    if w != h:
+        min_dim = min(w, h)
+        left = (w - min_dim) // 2
+        top = (h - min_dim) // 2
+        pil_img = pil_img.crop((left, top, left + min_dim, top + min_dim))
+    
     # Resize (Pillow uses (width, height))
     target_w, target_h = target_size[1], target_size[0]
     pil_img = pil_img.resize((target_w, target_h), Image.Resampling.BILINEAR)
