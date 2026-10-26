@@ -302,6 +302,41 @@ def get_dictionary():
 
 
 # ============================================================
+# Universal Route Catch-All (Guarantees Vercel & Proxy Compatibility)
+# ============================================================
+
+@app.route('/<path:path>', methods=['GET', 'POST'])
+def universal_fallback(path):
+    clean_path = path.strip('/').lower()
+    
+    # Static files fallback
+    if clean_path.startswith('static/'):
+        return send_from_directory(os.path.join(BASE_DIR, 'static'), path[7:])
+    
+    # API endpoints
+    if clean_path in ('api/health', 'health'):
+        return health_check()
+    if clean_path in ('api/dictionary', 'dictionary'):
+        return get_dictionary()
+    if clean_path in ('about', 'api/about'):
+        return about()
+    if clean_path in ('api/predict', 'predict') and request.method == 'POST':
+        return predict()
+    if clean_path in ('api/predict-video', 'predict-video') and request.method == 'POST':
+        return predict_video()
+    
+    # Catch any index/root rewrite
+    if clean_path in ('', 'index', 'api/index', 'api', 'api/index.py', 'index.html'):
+        return index()
+    
+    return jsonify({
+        'success': False,
+        'error': f'Resource not found for path: /{path}',
+        'received_path': path,
+    }), 404
+
+
+# ============================================================
 # Error Handlers
 # ============================================================
 
@@ -318,6 +353,7 @@ def not_found(e):
     return jsonify({
         'success': False,
         'error': 'Resource not found.',
+        'path': getattr(request, 'path', None),
     }), 404
 
 
