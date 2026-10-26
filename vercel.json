@@ -1,13 +1,26 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "/api/index?__route=/api/$1"
+    },
+    {
+      "source": "/about",
+      "destination": "/api/index?__route=/about"
+    },
+    {
+      "source": "/",
+      "destination": "/api/index?__route=/"
+    },
+    {
       "source": "/(.*)",
-      "destination": "/api/index"
+      "destination": "/api/index?__route=/$1"
     }
   ],
   "functions": {
     "api/index.py": {
-      "includeFiles": "{templates/**,static/**,models/**,src/**,config.py}"
+      "includeFiles": "{templates/**,static/**,public/**,models/**,src/**,config.py}"
     }
   }
 }
