@@ -39,8 +39,15 @@ from src.dictionary import (
     is_dynamic_sign, get_dynamic_letter_note
 )
 
+# Base directory for reliable template and static resolution
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Initialize Flask app
-app = Flask(__name__)
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BASE_DIR, 'templates'),
+    static_folder=os.path.join(BASE_DIR, 'static'),
+)
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 app.config['UPLOAD_FOLDER'] = UPLOADS_DIR
 
@@ -61,12 +68,15 @@ else:
 # ============================================================
 
 @app.route('/')
+@app.route('/index')
+@app.route('/api/index')
 def index():
     """Render the main application page."""
-    return render_template('index.html', model_loaded=model_loaded)
+    return render_template('index.html', model_loaded=predictor.is_loaded)
 
 
 @app.route('/about')
+@app.route('/api/about')
 def about():
     """Render the about page."""
     return render_template('about.html')
