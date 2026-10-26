@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+.env/
+
+# Pytest & IDE
+.pytest_cache/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Large datasets (downloaded separately)
+dataset/asl_alphabet_train/
+dataset/asl_alphabet_test/
+dataset/*.zip
+
+# Temporary uploads
+uploads/*
+!uploads/.gitkeep
+
+# Evaluation intermediate tensors (large binary files)
+results/*.npy
+
+# Vercel build output
+.vercel/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini
