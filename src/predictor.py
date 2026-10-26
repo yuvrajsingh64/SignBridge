@@ -75,11 +75,15 @@ class SignPredictor:
             
             if os.path.exists(tflite_path):
                 try:
-                    import tflite_runtime.interpreter as tflite
-                    self.interpreter = tflite.Interpreter(model_path=tflite_path)
+                    from ai_edge_litert.interpreter import Interpreter
+                    self.interpreter = Interpreter(model_path=tflite_path)
                 except ImportError:
-                    import tensorflow as tf
-                    self.interpreter = tf.lite.Interpreter(model_path=tflite_path)
+                    try:
+                        import tflite_runtime.interpreter as tflite
+                        self.interpreter = tflite.Interpreter(model_path=tflite_path)
+                    except ImportError:
+                        import tensorflow as tf
+                        self.interpreter = tf.lite.Interpreter(model_path=tflite_path)
                 self.interpreter.allocate_tensors()
                 self.model_type = "tflite"
                 self.is_loaded = True
