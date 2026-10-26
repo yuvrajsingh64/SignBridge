@@ -150,9 +150,6 @@
     // IMAGE UPLOAD
     // ============================================================
     function bindUploadEvents() {
-        // Click to browse
-        el.uploadArea.addEventListener('click', () => el.imageInput.click());
-
         // File selected
         el.imageInput.addEventListener('change', handleFileSelect);
 
@@ -167,7 +164,7 @@
         el.uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
             el.uploadArea.classList.remove('drag-over');
-            if (e.dataTransfer.files.length > 0) {
+            if (e.dataTransfer && e.dataTransfer.files.length > 0) {
                 el.imageInput.files = e.dataTransfer.files;
                 handleFileSelect();
             }
@@ -175,6 +172,7 @@
 
         // Clear image
         el.clearImageBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             e.stopPropagation();
             clearUpload();
         });
@@ -216,6 +214,11 @@
             el.imagePreviewContainer.classList.remove('d-none');
             el.uploadArea.classList.add('has-image');
             el.predictBtn.disabled = false;
+
+            // Auto-trigger prediction immediately
+            setTimeout(() => {
+                handleUploadSubmit(new Event('submit'));
+            }, 100);
         };
         reader.readAsDataURL(file);
     }
@@ -344,14 +347,37 @@
         try {
             el.cameraError.classList.add('d-none');
 
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-                audio: false,
-            });
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                el.cameraErrorText.textContent = 'Camera API is not supported in this browser or is blocked by browser permissions. Please ensure you are accessing via HTTPS or localhost.';
+                el.cameraError.classList.remove('d-none');
+                return;
+            }
+
+            let stream;
+            try {
+                // Try ideal resolution first
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 640 }, height: { ideal: 480 } },
+                    audio: false,
+                });
+            } catch (constraintErr) {
+                console.warn('Constrained camera request failed, falling back to basic video:', constraintErr);
+                // Fallback to basic unconstrained video
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: false,
+                });
+            }
 
             state.cameraStream = stream;
             el.cameraVideo.srcObject = stream;
             state.cameraRunning = true;
+
+            try {
+                await el.cameraVideo.play();
+            } catch (playErr) {
+                console.warn('Autoplay error:', playErr);
+            }
 
             el.cameraOverlay.classList.add('d-none');
             el.startCameraBtn.classList.add('d-none');
@@ -363,13 +389,16 @@
             state.captureInterval = setInterval(captureAndPredict, 1500);
 
         } catch (err) {
-            let msg = 'Could not access camera.';
-            if (err.name === 'NotAllowedError') {
-                msg = 'Camera permission denied. Please allow camera access in your browser settings.';
-            } else if (err.name === 'NotFoundError') {
-                msg = 'No camera found. Please connect a camera and try again.';
-            } else if (err.name === 'NotReadableError') {
-                msg = 'Camera is in use by another application.';
+            console.error('Camera error:', err);
+            let msg = 'Could not access camera (' + (err.message || err.name) + ').';
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                msg = 'Camera permission denied. Please click the lock/settings icon next to your browser URL bar and allow Camera access.';
+            } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                msg = 'No camera found. Please connect a webcam and try again.';
+            } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+                msg = 'Camera is in use by another application (Zoom, Teams, or another tab).';
+            } else if (err.name === 'OverconstrainedError') {
+                msg = 'Camera resolution constraints not supported by your webcam.';
             }
             el.cameraErrorText.textContent = msg;
             el.cameraError.classList.remove('d-none');
