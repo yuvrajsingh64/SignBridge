@@ -69,7 +69,6 @@ else:
 
 @app.route('/')
 @app.route('/index')
-@app.route('/api/index')
 def index():
     """Render the main application page."""
     return render_template('index.html', model_loaded=predictor.is_loaded)
@@ -304,6 +303,18 @@ def get_dictionary():
 # ============================================================
 # Universal Route Catch-All (Guarantees Vercel & Proxy Compatibility)
 # ============================================================
+
+@app.route('/api/index', methods=['GET', 'POST'])
+def vercel_entrypoint():
+    """Dispatch Vercel serverless requests based on rewritten route."""
+    route_target = (
+        request.args.get('__route')
+        or request.headers.get('x-matched-path')
+        or request.headers.get('x-vercel-matched-path')
+        or '/'
+    )
+    return universal_fallback(route_target)
+
 
 @app.route('/<path:path>', methods=['GET', 'POST'])
 def universal_fallback(path):
