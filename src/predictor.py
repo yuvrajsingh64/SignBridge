@@ -47,10 +47,12 @@ class SignPredictor:
             bool: True if loaded successfully, False otherwise.
         """
         try:
-            # Check files exist
-            if not os.path.exists(self.model_path):
+            # Check model files (supports TFLite and Keras)
+            tflite_path = os.path.join(os.path.dirname(self.model_path), "signbridge_model.tflite")
+            
+            if not os.path.exists(tflite_path) and not os.path.exists(self.model_path):
                 self._load_error = (
-                    f"Model file not found at: {self.model_path}. "
+                    f"Model file not found at: {self.model_path} or {tflite_path}. "
                     "Please train the model first using: python train_model.py"
                 )
                 return False
@@ -70,9 +72,7 @@ class SignPredictor:
             # The file stores {class_name: index}, we need {index: class_name}
             self.class_names = {int(v): k for k, v in class_indices.items()}
             
-            # Load model (supports both TFLite and Keras)
-            tflite_path = os.path.join(os.path.dirname(self.model_path), "signbridge_model.tflite")
-            
+            # Load model (prefer lightweight TFLite for Vercel/serverless)
             if os.path.exists(tflite_path):
                 try:
                     from ai_edge_litert.interpreter import Interpreter

@@ -3,14 +3,14 @@ SignBridge - Image Preprocessing Module
 ========================================
 Handles all image preprocessing for training and inference.
 Ensures consistent preprocessing across the entire pipeline.
+Uses Pillow and NumPy for fast, lightweight, and serverless-compatible image handling.
 """
 
-import cv2
-import numpy as np
-from PIL import Image
 import io
 import os
 import sys
+import numpy as np
+from PIL import Image
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -24,7 +24,7 @@ def preprocess_image(image_input, target_size=(IMG_HEIGHT, IMG_WIDTH)):
     Accepts:
         - File path (str)
         - PIL Image
-        - NumPy array (BGR from OpenCV or RGB)
+        - NumPy array (RGB, BGR, Grayscale, or RGBA)
         - Bytes or BytesIO
     
     Returns:
@@ -34,65 +34,41 @@ def preprocess_image(image_input, target_size=(IMG_HEIGHT, IMG_WIDTH)):
     Raises:
         ValueError: If the image cannot be loaded or is invalid.
     """
-    img = _load_image(image_input)
+    pil_img = _to_pil_image(image_input)
     
-    if img is None:
+    if pil_img is None:
         raise ValueError("Could not load or decode the image.")
     
     # Ensure 3 channels (RGB)
-    if len(img.shape) == 2:
-        # Grayscale -> RGB
-        img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-    elif img.shape[2] == 4:
-        # RGBA -> RGB
-        img = cv2.cvtColor(img, cv2.COLOR_BGRA2RGB)
-    elif img.shape[2] == 3:
-        # BGR -> RGB (OpenCV loads as BGR)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    if pil_img.mode != 'RGB':
+        pil_img = pil_img.convert('RGB')
     
-    # Resize
-    img = cv2.resize(img, target_size, interpolation=cv2.INTER_AREA)
+    # Resize (Pillow uses (width, height))
+    target_w, target_h = target_size[1], target_size[0]
+    pil_img = pil_img.resize((target_w, target_h), Image.Resampling.BILINEAR)
     
-    # Normalize to [0, 1]
-    img = img.astype(np.float32) / 255.0
+    # Convert to numpy array and normalize to [0, 1]
+    img_arr = np.array(pil_img, dtype=np.float32) / 255.0
     
-    # Add batch dimension
-    img = np.expand_dims(img, axis=0)
-    
-    return img
+    # Add batch dimension -> (1, H, W, 3)
+    return np.expand_dims(img_arr, axis=0)
 
 
 def preprocess_frame(frame, target_size=(IMG_HEIGHT, IMG_WIDTH)):
     """
-    Preprocess a webcam frame (BGR numpy array from OpenCV or browser).
-    Same pipeline as preprocess_image but optimized for speed.
+    Preprocess a webcam frame (numpy array or PIL Image).
+    Same pipeline as preprocess_image but optimized for streaming performance.
     
     Args:
-        frame: numpy array in BGR or RGB format
+        frame: numpy array or PIL Image
         target_size: tuple (height, width)
     
     Returns:
         Preprocessed image array with shape (1, H, W, C).
     """
-    if frame is None or not isinstance(frame, np.ndarray):
+    if frame is None:
         raise ValueError("Invalid frame input.")
-    
-    # Handle different channel configurations
-    if len(frame.shape) == 2:
-        frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
-    elif frame.shape[2] == 4:
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2RGB)
-    elif frame.shape[2] == 3:
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    
-    # Resize
-    frame = cv2.resize(frame, target_size, interpolation=cv2.INTER_AREA)
-    
-    # Normalize
-    frame = frame.astype(np.float32) / 255.0
-    
-    # Add batch dimension
-    return np.expand_dims(frame, axis=0)
+    return preprocess_image(frame, target_size=target_size)
 
 
 def validate_image_file(file_storage):
@@ -187,8 +163,13 @@ def extract_video_frames(video_path, interval=0.5, max_frames=20):
         max_frames: Maximum number of frames to extract
     
     Returns:
-        list of numpy arrays (BGR format from OpenCV)
+        list of numpy arrays (RGB format)
     """
+    try:
+        import cv2
+    except ImportError:
+        raise RuntimeError("Video processing requires opencv-python-headless, which is optional.")
+        
     frames = []
     cap = cv2.VideoCapture(video_path)
     
@@ -217,7 +198,8 @@ def extract_video_frames(video_path, interval=0.5, max_frames=20):
             break
         
         if frame_count % frame_interval == 0:
-            frames.append(frame)
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frames.append(rgb_frame)
         
         frame_count += 1
     
@@ -225,35 +207,48 @@ def extract_video_frames(video_path, interval=0.5, max_frames=20):
     return frames
 
 
-def _load_image(image_input):
+def _to_pil_image(image_input):
     """
-    Load an image from various input types into a BGR numpy array.
+    Convert any valid image input into a PIL Image object.
+    
+    Args:
+        image_input: str, Image.Image, bytes, BytesIO, or np.ndarray
+        
+    Returns:
+        PIL.Image.Image
     """
+    if isinstance(image_input, Image.Image):
+        return image_input.copy()
+        
     if isinstance(image_input, str):
-        # File path
         if not os.path.exists(image_input):
             raise ValueError(f"Image file not found: {image_input}")
-        img = cv2.imread(image_input)
-        if img is None:
-            raise ValueError(f"Could not decode image: {image_input}")
-        return img
-    
-    elif isinstance(image_input, np.ndarray):
-        return image_input.copy()
-    
-    elif isinstance(image_input, Image.Image):
-        # PIL Image -> numpy array (RGB)
-        img_array = np.array(image_input)
-        if len(img_array.shape) == 3 and img_array.shape[2] == 3:
-            img_array = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
-        return img_array
-    
-    elif isinstance(image_input, (bytes, io.BytesIO)):
-        if isinstance(image_input, io.BytesIO):
-            image_input = image_input.read()
-        nparr = np.frombuffer(image_input, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        return img
-    
-    else:
-        raise ValueError(f"Unsupported image input type: {type(image_input)}")
+        return Image.open(image_input)
+        
+    if isinstance(image_input, (bytes, io.BytesIO)):
+        if isinstance(image_input, bytes):
+            image_input = io.BytesIO(image_input)
+        image_input.seek(0)
+        return Image.open(image_input)
+        
+    if isinstance(image_input, np.ndarray):
+        arr = image_input
+        if len(arr.shape) == 2:
+            return Image.fromarray(arr, mode='L')
+        if len(arr.shape) == 3 and arr.shape[2] == 1:
+            return Image.fromarray(arr[:, :, 0], mode='L')
+        if len(arr.shape) == 3 and arr.shape[2] == 4:
+            return Image.fromarray(arr, mode='RGBA')
+        if len(arr.shape) == 3 and arr.shape[2] == 3:
+            return Image.fromarray(arr, mode='RGB')
+            
+    raise ValueError(f"Unsupported image input type: {type(image_input)}")
+
+
+def _load_image(image_input):
+    """Legacy helper for loading image as a numpy array."""
+    pil_img = _to_pil_image(image_input)
+    if pil_img.mode != 'RGB':
+        pil_img = pil_img.convert('RGB')
+    return np.array(pil_img)
+
