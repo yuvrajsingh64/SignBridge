@@ -34,7 +34,7 @@ class VercelPathMiddleware:
         return self.wsgi_app(environ, start_response)
 
 
-# Wrap Flask app with the middleware for Vercel WSGI
-application = VercelPathMiddleware(app)
-handler = application
-app = application
+# Apply WSGI middleware to Flask's wsgi_app so app remains a Flask instance
+app.wsgi_app = VercelPathMiddleware(app.wsgi_app)
+handler = app
+

@@ -307,11 +307,20 @@ def get_dictionary():
 
 @app.route('/<path:path>', methods=['GET', 'POST'])
 def universal_fallback(path):
-    clean_path = path.strip('/').lower()
+    # Check if a target route was passed via query parameter or Vercel routing header
+    route_candidate = (
+        request.args.get('__route')
+        or request.headers.get('x-matched-path')
+        or request.headers.get('x-vercel-matched-path')
+    )
+    if route_candidate:
+        clean_path = route_candidate.split('?')[0].strip('/').lower()
+    else:
+        clean_path = path.strip('/').lower()
     
     # Static files fallback
     if clean_path.startswith('static/'):
-        return send_from_directory(os.path.join(BASE_DIR, 'static'), path[7:])
+        return send_from_directory(os.path.join(BASE_DIR, 'static'), clean_path[7:])
     
     # API endpoints
     if clean_path in ('api/health', 'health'):
@@ -331,8 +340,8 @@ def universal_fallback(path):
     
     return jsonify({
         'success': False,
-        'error': f'Resource not found for path: /{path}',
-        'received_path': path,
+        'error': f'Resource not found for path: /{clean_path}',
+        'received_path': clean_path,
     }), 404
 
 
