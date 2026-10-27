@@ -1,6 +1,6 @@
 """
-SignBridge - Flask Application
-================================
+EchoSign - Flask Application
+============================
 Main web application for ASL sign language recognition.
 
 Endpoints:
@@ -392,7 +392,7 @@ def internal_error(e):
 if __name__ == '__main__':
     os.makedirs(UPLOADS_DIR, exist_ok=True)
     print("\n" + "=" * 50)
-    print("  SignBridge - ASL Sign Language Translator")
+    print("  EchoSign - ASL Sign Language Translator")
     print("=" * 50)
     print(f"  Model loaded: {predictor.is_loaded}")
     print(f"  Open: http://127.0.0.1:5000")

@@ -1,7 +1,7 @@
 """
-SignBridge Configuration
-========================
-Central configuration for the SignBridge application.
+EchoSign Configuration
+======================
+Central configuration for the EchoSign application.
 """
 
 import os

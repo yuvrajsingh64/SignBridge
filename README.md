@@ -1,4 +1,4 @@
-# 🤟 SignBridge — AI-Powered Sign Language to English Translator
+# 🤟 EchoSign — AI-Powered Sign Language to English Translator
 
 ![Python](https://img.shields.io/badge/Python-3.12-blue)
 ![TensorFlow](https://img.shields.io/badge/TensorFlow-2.x-orange)
@@ -8,12 +8,12 @@
 
 ## 📋 Project Overview
 
-**SignBridge** is an AI-powered web application that recognizes American Sign Language (ASL) alphabet signs from images and live webcam feeds, then displays their corresponding English meanings.
+**EchoSign** is an AI-powered web application that recognizes American Sign Language (ASL) alphabet signs from images and live webcam feeds, then displays their corresponding English meanings.
 
 This project demonstrates how computer vision and deep learning can assist communication between sign language users and people unfamiliar with sign language.
 
 ### ⚠️ Important Note
-SignBridge recognizes **individual ASL alphabet letters** (A–Z) plus 3 special gestures (delete, space, nothing). It does **not** translate full ASL sentences, words, or grammar. Letters J and Z involve motion in actual ASL; the model uses static images only.
+EchoSign recognizes **individual ASL alphabet letters** (A–Z) plus 3 special gestures (delete, space, nothing). It does **not** translate full ASL sentences, words, or grammar. Letters J and Z involve motion in actual ASL; the model uses static images only.
 
 ---
 

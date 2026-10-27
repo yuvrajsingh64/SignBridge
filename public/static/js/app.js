@@ -1,5 +1,5 @@
 /**
- * SignBridge - Main Application JavaScript
+ * EchoSign - Main Application JavaScript
  * ==========================================
  * Handles image upload, webcam streaming, video upload,
  * text composition, and speech synthesis.
